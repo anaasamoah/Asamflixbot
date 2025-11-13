@@ -1200,7 +1200,35 @@ async def validate_files_command(update: Update, context: ContextTypes.DEFAULT_T
 
 if __name__ == '__main__':
     print('Starting bot...')
-    app = ApplicationBuilder().token(TOKEN).build()
+    # Ensure Application instances are weakref-able so JobQueue can store a weakref.
+    # Some PTB builds define Application with __slots__ that do not include '__weakref__'.
+    # Create a small subclass with '__weakref__' in __slots__ and replace the module
+    # symbol so ApplicationBuilder will construct the subclass instead.
+    try:
+        import telegram.ext._application as _appmod
+        Application = _appmod.Application
+        app_slots = Application.__dict__.get('__slots__', ())
+        # normalize to tuple
+        if isinstance(app_slots, str):
+            app_slots = (app_slots,)
+        if '__weakref__' not in app_slots:
+            new_slots = tuple(app_slots) + ('__weakref__',)
+            _AppWithWeakRef = type(Application.__name__, (Application,), {'__slots__': new_slots})
+            _appmod.Application = _AppWithWeakRef
+    except Exception:
+        # If anything goes wrong, fall back to default behavior and let PTB raise errors.
+        pass
+
+    builder = ApplicationBuilder().token(TOKEN)
+    # If we created a subclass to add '__weakref__', ensure the builder uses it
+    try:
+        if '_AppWithWeakRef' in locals():
+            # DefaultValue lives in the applicationbuilder module
+            import telegram.ext._applicationbuilder as _ab
+            builder._application_class = _ab.DefaultValue(locals()['_AppWithWeakRef'])
+    except Exception:
+        pass
+    app = builder.build()
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('help', help_command))
     app.add_handler(CommandHandler('movie', movie_command))
@@ -1255,4 +1283,18 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('validate_files', validate_files_command))
 
     print('polling...')
-    app.run_polling()
+    try:
+        app.run_polling()
+    except Exception as e:
+        # Provide a clearer error message when the bot token is invalid/rejected
+        try:
+            from telegram.error import InvalidToken
+        except Exception:
+            InvalidToken = None
+        if InvalidToken is not None and isinstance(e, InvalidToken):
+            print(f"ERROR: Bot token invalid or rejected by Telegram API: {e}")
+            print("Please set a valid TELEGRAM_BOT_TOKEN in your environment or in a local .env file (see .env.example).")
+            import sys
+            sys.exit(1)
+        # re-raise other unexpected exceptions so they can be debugged
+        raise

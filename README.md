@@ -108,3 +108,67 @@ cp .env.example .env || true
 If you'd like, I can also:
 - add a small GitHub Actions workflow to run lint/tests on PRs,
 - or create a Codespaces devcontainer feature that injects a masked startup log showing that a token was found.
+
+Windows service
+----------------
+
+If you want the bot to run continuously on Windows, there are helper scripts included:
+
+- `install_windows_service.ps1` — create and start a Windows Service named `AsamflixBot` (run as Administrator).
+- `uninstall_windows_service.ps1` — remove the service.
+
+Usage (Administrator PowerShell):
+
+```powershell
+Set-Location "F:\Programming files\project work\Asamflixbot"
+# make sure .env contains TELEGRAM_BOT_TOKEN or you'll be prompted
+.\install_windows_service.ps1
+```
+
+If the service fails to start, check the Windows Event Viewer and the service properties. The service runs `start_bot.ps1` which reads `.env` in the repository root.
+
+PythonAnywhere hosting
+----------------------
+
+PythonAnywhere is a simple, reliable option for running the bot 24/7 in the cloud (uses free or paid tier).
+
+**Quick Setup (5 minutes)**
+
+1. Create a free PythonAnywhere account at https://www.pythonanywhere.com
+2. Log in and open the "Bash console" (or "$ Bash console" button).
+3. Clone this repository (or upload the files):
+   ```bash
+   git clone https://github.com/<your-username>/asamflixbot.git
+   cd asamflixbot
+   ```
+   (Or use the Web tab to upload files if not using git.)
+4. Create a virtual environment and install dependencies:
+   ```bash
+   mkvirtualenv --python=/usr/bin/python3.11 asamflixbot
+   pip install -r requirements.txt
+   ```
+   (Adjust Python version if needed; check PythonAnywhere's available versions.)
+5. Set your bot token in `.env`:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your token
+   nano .env
+   # Press Ctrl+X, then Y, then Enter to save
+   ```
+6. Go to the "Always on" tab (or "Scheduled tasks" if you have a free account) and create a new task:
+   - Command: `/home/yourusername/.virtualenvs/asamflixbot/bin/python /home/yourusername/asamflixbot/main.py`
+   - Adjust the path to your actual username and repo location.
+7. Save and start the task. Check the task log to confirm it's running.
+
+**To stop the bot:**
+- Go to the "Always on" tab and click "Stop".
+
+**To view logs:**
+- In PythonAnywhere, go to the "Always on" or "Scheduled tasks" tab and click "View log".
+- Logs are typically stored in the task's output file (e.g., `~/.asamflixbot.log` or shown inline).
+
+**Notes:**
+- Free tier accounts run tasks for limited hours (typically 1-2 hours/day); upgrade to a paid plan for 24/7 uptime.
+- Make sure `.env` is in the repo root and contains `TELEGRAM_BOT_TOKEN`.
+- If the task stops unexpectedly, check the log for errors and ensure your token is valid.
+- To update the bot code, pull/upload new files and restart the task.
