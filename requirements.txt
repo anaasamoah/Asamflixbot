@@ -1,4 +1,0 @@
-python-telegram-bot==20.4
-# Optional extras:
-# python-telegram-bot[job-queue]==20.4  # uncomment if you enable JobQueue on the host
-# bs4, aiohttp removed per earlier change; add if needed
